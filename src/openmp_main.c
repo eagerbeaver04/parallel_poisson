@@ -1,9 +1,11 @@
 #include "utils/utils.h"
 #include <assert.h>
+#include <omp.h>
 #include <stdio.h>
 
 Matrix generate_five_diag(size_t xn, size_t yn)
 {
+
     size_t n, nn;
     if(mul_overflow_size_t(xn, yn, &n) || mul_overflow_size_t(n, n, &nn))
     {
@@ -12,6 +14,7 @@ Matrix generate_five_diag(size_t xn, size_t yn)
     }
 
     Matrix A = create_matrix(n, n);
+#pragma omp parallel for
     for(size_t i = 0; i < n; ++i)
     {
         // центр
@@ -55,6 +58,7 @@ Matrix cholesky(Matrix* A, int n)
             s += L.data[j][k] * L.data[j][k];
         }
         L.data[j][j] = sqrt(A->data[j][j] - s);
+#pragma omp parallel for
         for(int i = j + 1; i < n; i++)
         {
             double s = 0;
