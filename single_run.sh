@@ -1,0 +1,1 @@
+time; ./build/main_executable

@@ -3,196 +3,214 @@
 #include <mpi.h>
 #include <stdio.h>
 
-Matrix generate_five_diag(size_t xn, size_t yn)
+#include <mpi.h>
+
+typedef struct
+{
+    size_t rows;
+    size_t cols;
+    double** data;
+    double* buf;
+    MPI_Win win_data; // MPI window for data pointers
+    MPI_Win win_buf;  // MPI window for buffer
+} Matrix_MPI;
+
+static Matrix_MPI create_shared_matrix(size_t rows, size_t cols, MPI_Comm comm)
+{
+    Matrix_MPI m = {rows, cols, NULL, NULL, MPI_WIN_NULL, MPI_WIN_NULL};
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    // Check for overflow
+    size_t total;
+    if(mul_overflow_size_t(rows, cols, &total))
+    {
+        if(rank == 0)
+        {
+            fprintf(stderr, "Matrix size too large (overflow).\n");
+        }
+        MPI_Abort(comm, EXIT_FAILURE);
+    }
+
+    // Create shared memory for the buffer (actual matrix data)
+    MPI_Aint buf_size = total * sizeof(double);
+    double* shared_buf = NULL;
+    MPI_Win_allocate_shared(buf_size, sizeof(double), MPI_INFO_NULL, comm,
+                            &shared_buf, &m.win_buf);
+
+    // Create shared memory for data pointers
+    MPI_Aint data_size = rows * sizeof(double*);
+    double** shared_data = NULL;
+    MPI_Win_allocate_shared(data_size, sizeof(double*), MPI_INFO_NULL, comm,
+                            (void**)&shared_data, &m.win_data);
+
+    // Synchronize before initialization
+    MPI_Win_fence(0, m.win_buf);
+    MPI_Win_fence(0, m.win_data);
+
+    // CRITICAL FIX: Only rank 0 should initialize the row pointers
+    // Row pointers must be set consistently across all processes
+    if(rank == 0)
+    {
+        // Initialize buffer to zero
+        for(size_t i = 0; i < total; ++i)
+        {
+            shared_buf[i] = 0.0;
+        }
+
+        // Initialize ALL row pointers (not just a subset)
+        for(size_t i = 0; i < rows; ++i)
+        {
+            shared_data[i] = shared_buf + i * cols;
+        }
+    }
+
+    // Synchronize after initialization
+    MPI_Win_fence(0, m.win_buf);
+    MPI_Win_fence(0, m.win_data);
+
+    // Get local pointers to shared memory
+    MPI_Aint data_win_size;
+    int data_win_disp_unit;
+    MPI_Win_shared_query(m.win_data, 0, &data_win_size, &data_win_disp_unit,
+                         (void**)&m.data);
+
+    MPI_Aint buf_win_size;
+    int buf_win_disp_unit;
+    MPI_Win_shared_query(m.win_buf, 0, &buf_win_size, &buf_win_disp_unit,
+                         &m.buf);
+
+    MPI_Win_fence(0, m.win_buf);
+    MPI_Win_fence(0, m.win_data);
+    return m;
+}
+
+static void free_shared_matrix(Matrix_MPI* m)
+{
+    if(m->win_data != MPI_WIN_NULL)
+    {
+        MPI_Win_free(&m->win_data);
+    }
+    if(m->win_buf != MPI_WIN_NULL)
+    {
+        MPI_Win_free(&m->win_buf);
+    }
+    m->data = NULL;
+    m->buf = NULL;
+}
+
+Matrix_MPI generate_five_diag_mpi(size_t xn, size_t yn, MPI_Comm comm)
 {
     int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
 
     size_t n, nn;
     if(mul_overflow_size_t(xn, yn, &n) || mul_overflow_size_t(n, n, &nn))
     {
-        fprintf(stderr, "Слишком большая сетка (переполнение).\n");
-        exit(EXIT_FAILURE);
+        if(rank == 0)
+        {
+            fprintf(stderr, "Слишком большая сетка (переполнение).\n");
+        }
+        MPI_Abort(comm, EXIT_FAILURE);
     }
 
-    Matrix A;
+    // Create shared matrix
+    Matrix_MPI A = create_shared_matrix(n, n, comm);
 
-    // Only root process creates the actual matrix
-    if(rank == 0)
+    MPI_Win_fence(0, A.win_buf);
+    MPI_Win_fence(0, A.win_data);
+
+    // Distribute rows among processes
+    size_t rows_per_proc = n / size;
+    size_t remainder = n % size;
+
+    size_t start_row =
+        rank * rows_per_proc + (rank < remainder ? rank : remainder);
+    size_t end_row = start_row + rows_per_proc + (rank < remainder ? 1 : 0);
+
+    // Each process fills its assigned rows
+    for(size_t i = start_row; i < end_row; ++i)
     {
-        A = create_matrix(n, n);
-        printf("Main process: Created matrix %zux%zu\n", n, n);
-    }
+        // центр
+        A.data[i][i] = -4.0;
 
-    // Broadcast dimensions to all processes
-    MPI_Bcast(&n, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&xn, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
-
-    // Calculate work distribution
-    int rows_per_process = n / size;
-    int remainder = n % size;
-
-    int start_row =
-        rank * rows_per_process + (rank < remainder ? rank : remainder);
-    int end_row = start_row + rows_per_process + (rank < remainder ? 1 : 0);
-    int my_row_count = end_row - start_row;
-
-    if(rank == 0)
-    {
-        // Main process computes its rows directly
-        printf("Main process: Computing %d rows\n", my_row_count);
-        for(size_t i = start_row; i < end_row; ++i)
+        // вверх (i - xn)
+        if(i >= xn)
         {
-            A.data[i][i] = -4.0;
-            if(i >= xn)
-                A.data[i][i - xn] = 1.0;
-            if(i + xn < n)
-                A.data[i][i + xn] = 1.0;
-            if((i % xn) != 0)
-                A.data[i][i - 1] = 1.0;
-            if((i % xn) != xn - 1)
-                A.data[i][i + 1] = 1.0;
+            A.data[i][i - xn] = 1.0;
         }
-
-        // Receive sparse data from workers
-        for(int worker = 1; worker < size; worker++)
+        // вниз (i + xn)
+        if(i + xn < n)
         {
-            int worker_start = worker * rows_per_process +
-                               (worker < remainder ? worker : remainder);
-            int worker_end =
-                worker_start + rows_per_process + (worker < remainder ? 1 : 0);
-            int worker_row_count = worker_end - worker_start;
-
-            if(worker_row_count > 0)
-            {
-                // Each worker sends: worker_row_count * 10 elements
-                // Format: [col1, col2, col3, col4, col5, val1, val2, val3,
-                // val4, val5] for each row
-                double* sparse_data =
-                    (double*)malloc(worker_row_count * 10 * sizeof(double));
-
-                MPI_Recv(sparse_data, worker_row_count * 10, MPI_DOUBLE, worker,
-                         0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-                // Reconstruct matrix from sparse data
-                for(int i = 0; i < worker_row_count; i++)
-                {
-                    int row = worker_start + i;
-                    double* row_data = &sparse_data[i * 10];
-
-                    // First 5 elements: column positions
-                    // Next 5 elements: values
-                    for(int j = 0; j < 5; j++)
-                    {
-                        int col = (int)row_data[j];     // Column index
-                        double value = row_data[j + 5]; // Value
-
-                        if(col >= 0)
-                        { // Valid column (not -1)
-                            A.data[row][col] = value;
-                        }
-                    }
-                }
-
-                free(sparse_data);
-                printf("Main process: Received %d rows from worker %d\n",
-                       worker_row_count, worker);
-            }
+            A.data[i][i + xn] = 1.0;
         }
-
-        printf("Main process: Matrix assembly complete\n");
-    }
-    else
-    {
-        // Workers compute and send sparse representation
-        if(my_row_count > 0)
+        // влево (i - 1) — не на левом краю строки
+        if((i % xn) != 0)
         {
-            printf("Worker %d: Computing %d rows in sparse format\n", rank,
-                   my_row_count);
-
-            // Allocate buffer: 10 elements per row (5 positions + 5 values)
-            double* sparse_data =
-                (double*)malloc(my_row_count * 10 * sizeof(double));
-
-            for(int i = 0; i < my_row_count; i++)
-            {
-                size_t row = start_row + i;
-                double* row_data = &sparse_data[i * 10];
-
-                // Initialize all positions to -1 and values to 0
-                for(int j = 0; j < 10; j++)
-                {
-                    row_data[j] =
-                        (j < 5) ? -1.0 : 0.0; // Positions = -1, Values = 0
-                }
-
-                // Center (always exists)
-                row_data[0] = (double)row; // Position
-                row_data[5] = -4.0;        // Value
-
-                // Up (i - xn)
-                if(row >= xn)
-                {
-                    row_data[1] = (double)(row - xn); // Position
-                    row_data[6] = 1.0;                // Value
-                }
-
-                // Down (i + xn)
-                if(row + xn < n)
-                {
-                    row_data[2] = (double)(row + xn); // Position
-                    row_data[7] = 1.0;                // Value
-                }
-
-                // Left (i - 1)
-                if((row % xn) != 0)
-                {
-                    row_data[3] = (double)(row - 1); // Position
-                    row_data[8] = 1.0;               // Value
-                }
-
-                // Right (i + 1)
-                if((row % xn) != xn - 1)
-                {
-                    row_data[4] = (double)(row + 1); // Position
-                    row_data[9] = 1.0;               // Value
-                }
-            }
-
-            // Send sparse data to main process
-            MPI_Send(sparse_data, my_row_count * 10, MPI_DOUBLE, 0, 0,
-                     MPI_COMM_WORLD);
-            free(sparse_data);
-
-            printf("Worker %d: Sent sparse data for %d rows to main process\n",
-                   rank, my_row_count);
+            A.data[i][i - 1] = 1.0;
         }
-        else
+        // вправо (i + 1) — не на правом краю строки
+        if((i % xn) != xn - 1)
         {
-            printf("Worker %d: No rows to compute\n", rank);
+            A.data[i][i + 1] = 1.0;
         }
     }
 
-    return A; // Only meaningful for rank 0
+    // Synchronize to ensure all processes have finished writing
+    MPI_Win_fence(0, A.win_buf);
+    MPI_Win_fence(0, A.win_data);
+
+    printf("process with rank: %i ended matrix creation", rank);
+    return A;
 }
 
-Matrix cholesky(Matrix* A, int n)
+Matrix_MPI cholesky_mpi(Matrix_MPI* A, int n, MPI_Comm comm)
 {
-    Matrix L = create_matrix(n, n);
-    assert(A->cols == A->rows);
-    assert(A->cols == n);
+    int rank, size;
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+
+    // Create shared matrix for L
+    Matrix_MPI L = create_shared_matrix(n, n, comm);
+
+    MPI_Win_fence(0, L.win_buf);
+    MPI_Win_fence(0, L.win_data);
+
+    // Verify matrix dimensions (only rank 0 needs to check)
+    if(rank == 0)
+    {
+        assert(A->cols == A->rows);
+        assert(A->cols == n);
+    }
+    MPI_Win_fence(0, L.win_buf); // Ensure all processes see the assertions
 
     for(int j = 0; j < n; j++)
     {
-        double s = 0;
-        for(int k = 0; k < j; k++)
+        // Process 0 computes the diagonal element
+        if(rank == 0)
         {
-            s += L.data[j][k] * L.data[j][k];
+            double s = 0;
+            for(int k = 0; k < j; k++)
+            {
+                s += L.data[j][k] * L.data[j][k];
+            }
+            L.data[j][j] = sqrt(A->data[j][j] - s);
         }
-        L.data[j][j] = sqrt(A->data[j][j] - s);
-#pragma omp parallel for
-        for(int i = j + 1; i < n; i++)
+
+        // Synchronize to ensure L[j][j] is computed before others use it
+        MPI_Win_fence(0, L.win_buf);
+
+        // Parallelize the i-loop across processes
+        int chunk_size = (n - j - 1) / size;
+        int remainder = (n - j - 1) % size;
+
+        int start_i =
+            j + 1 + rank * chunk_size + (rank < remainder ? rank : remainder);
+        int end_i = start_i + chunk_size + (rank < remainder ? 1 : 0);
+
+        for(int i = start_i; i < end_i && i < n; i++)
         {
             double s = 0;
             for(int k = 0; k < j; k++)
@@ -201,7 +219,11 @@ Matrix cholesky(Matrix* A, int n)
             }
             L.data[i][j] = (1.0 / L.data[j][j] * (A->data[i][j] - s));
         }
+
+        // Synchronize after each column to ensure dependencies are met
+        MPI_Win_fence(0, L.win_buf);
     }
+
     return L;
 }
 
@@ -353,11 +375,14 @@ void errByEpsPcgChol(double a, double b, double c, double d, double h)
 
     Vector x = linspace(a, b, (b - a) / h + 1);
     Vector y = linspace(c, d, (d - c) / h + 1);
-    Matrix A = generate_five_diag(x.size - 2, y.size - 2);
-
+    Matrix_MPI A_MPI =
+        generate_five_diag_mpi(x.size - 2, y.size - 2, MPI_COMM_WORLD);
+    Matrix_MPI L_MPI = cholesky_mpi(&A_MPI, A_MPI.cols, MPI_COMM_WORLD);
     if(rank == 0)
     {
-        Matrix L = cholesky(&A, A.cols);
+        printf("Start");
+        Matrix L = {L_MPI.rows, L_MPI.cols, L_MPI.data, L_MPI.buf};
+        Matrix A = {A_MPI.rows, A_MPI.cols, A_MPI.data, A_MPI.buf};
         Vector us = uForXY(&x, &y);
         Vector B = F(&x, &y);
         int n = (x.size - 2) * (y.size - 2);
@@ -401,13 +426,15 @@ void errByEpsPcgChol(double a, double b, double c, double d, double h)
 
         free_matrix(&Lt);
         free_vector(zeros);
-        free_matrix(&L);
+        // free_matrix(&L);
     }
     free_vector(x);
     free_vector(y);
+    free_shared_matrix(&A_MPI);
+    free_shared_matrix(&L_MPI);
     if(rank == 0)
     {
-        free_matrix(&A);
+        printf("---\n");
     }
 }
 
@@ -430,10 +457,10 @@ int main(int argc, char** argv)
     double c = 0;
     double d = 1.625;
     double h = 0.025;
-    printf("----------------------------------------------------\n");
+    // printf("----------------------------------------------------\n");
+    MPI_Barrier(MPI_COMM_WORLD);
 
     errByEpsPcgChol(a, b, c, d, h);
-    printf("---\n");
 
     MPI_Finalize();
 

@@ -1,1 +1,1 @@
-time; OMP_NUM_THREADS=28 ./build/main_executable_openmp
+time; OMP_NUM_THREADS=4 ./build/main_executable_openmp
