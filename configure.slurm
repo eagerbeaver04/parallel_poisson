@@ -9,9 +9,9 @@
 module purge
 module load mpi/openmpi/4.1.6/gcc/11
 PYTHON_BIN=/opt/software/python/3.11.8/bin/python3
+module load cmake/3.28.3
+module load make/4.4.1
 
-N=200000000
-NE=200000000
 THREADS=(2 4 8 16 48)
 PROCS=(2 4 16 28)
 
