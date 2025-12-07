@@ -191,11 +191,11 @@ Matrix_MPI cholesky_mpi(Matrix_MPI* A, int n, MPI_Comm comm)
         assert(A->cols == n);
     }
 
-    const char* filename = create_filename("mpi_matrix_a", rank);
-    double sum = 0;
-    Matrix A_d = {A->rows, A->cols, A->data, A->buf};
-    save_matrix_market(&A_d, filename, &sum);
-    printf("rank = %i, check sum = %f", rank, sum);
+    // const char* filename = create_filename("mpi_matrix_a", rank);
+    // double sum = 0;
+    // Matrix A_d = {A->rows, A->cols, A->data, A->buf};
+    // save_matrix_market(&A_d, filename, &sum);
+    // printf("rank = %i, check sum = %f", rank, sum);
 
     // Broadcast assertion result to all processes
     int ok = 1;
@@ -282,11 +282,11 @@ Matrix_MPI cholesky_mpi(Matrix_MPI* A, int n, MPI_Comm comm)
     // Final synchronization
     MPI_Win_fence(0, L.win_buf);
 
-    const char* filename2 = create_filename("mpi_matrix_l", rank);
-    double sum2 = 0;
-    Matrix L_d = {L.rows, L.cols, L.data, L.buf};
-    save_matrix_market(&L_d, filename2, &sum2);
-    printf("rank = %i, check sum = %f", rank, sum2);
+    // const char* filename2 = create_filename("mpi_matrix_l", rank);
+    // double sum2 = 0;
+    // Matrix L_d = {L.rows, L.cols, L.data, L.buf};
+    // save_matrix_market(&L_d, filename2, &sum2);
+    // printf("rank = %i, check sum = %f", rank, sum2);
 
     return L;
 }

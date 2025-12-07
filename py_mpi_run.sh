@@ -1,0 +1,1 @@
+mpiexec --mca orte_base_help_aggregate 0  -n 4 python3 src/mpi.py

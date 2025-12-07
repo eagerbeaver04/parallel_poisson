@@ -77,9 +77,9 @@ Matrix generate_five_diag(size_t xn, size_t yn)
 
 Matrix cholesky(Matrix* A, int n)
 {
-    double sum = 0;
-    Matrix A_d = {A->rows, A->cols, A->data, A->buf};
-    save_matrix_market(&A_d, "openmp_matrix_a", &sum);
+    // double sum = 0;
+    // Matrix A_d = {A->rows, A->cols, A->data, A->buf};
+    // save_matrix_market(&A_d, "openmp_matrix_a", &sum);
 
     Matrix L = create_matrix_openmp(n, n);
     assert(A->cols == A->rows);
@@ -104,10 +104,10 @@ Matrix cholesky(Matrix* A, int n)
             L.data[i][j] = (1.0 / L.data[j][j] * (A->data[i][j] - s));
         }
     }
-    double sum2 = 0;
-    Matrix L_d = {L.rows, L.cols, L.data, L.buf};
-    save_matrix_market(&L_d, "openmp_matrix_l", &sum2);
-    printf(" check sum = %f", sum2);
+    // double sum2 = 0;
+    // Matrix L_d = {L.rows, L.cols, L.data, L.buf};
+    // save_matrix_market(&L_d, "openmp_matrix_l", &sum2);
+    // printf(" check sum = %f", sum2);
 
     return L;
 }
