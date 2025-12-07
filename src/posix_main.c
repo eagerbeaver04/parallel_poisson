@@ -386,7 +386,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    printf("threads: %i\n", NUM_THREADS);
+    // printf("threads: %i\n", NUM_THREADS);
 
     // Allocate memory for threads and thread_data
     threads = (pthread_t*)malloc(NUM_THREADS * sizeof(pthread_t));

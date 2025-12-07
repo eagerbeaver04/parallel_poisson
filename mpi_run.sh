@@ -1,2 +1,2 @@
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space ##-- may change parameter to fix it ( running under gdb has no segfaults)
-mpiexec --mca orte_base_help_aggregate 0  -n 4 ./build/main_executable_mpi
+time mpiexec --mca orte_base_help_aggregate 0  -n $1 ./build/main_executable_mpi
