@@ -142,3 +142,24 @@ return L
 4. mpi4py (Python)
 
 ### Результаты
+
+| Библиотека   | Потоки / Процессы |  Время      |
+|--------------|-------------------:|:-----------|
+| pthreads     | 2                  | 0m20.360s  |
+| pthreads     | 4                  | 0m11.836s  |
+| pthreads     | 8                  | 0m7.675s   |
+| pthreads     | 16                 | 0m6.636s   |
+| pthreads     | 48                 | 0m10.010s  |
+| OpenMP       | 2                  | 0m21.440s  |
+| OpenMP       | 4                  | 0m12.218s  |
+| OpenMP       | 8                  | 0m6.849s   |
+| OpenMP       | 16                 | 0m6.693s   |
+| OpenMP       | 48                 | 0m3.436s   |
+| MPI C        | 2                  | 0m19.548s  |
+| MPI C        | 4                  | 0m12.090s  |
+| MPI C        | 16                 | 0m7.596s   |
+| MPI C        | 28                 | 0m8.207s   |
+| MPI Python   | 2                  | 12m45.516s |
+| MPI Python   | 4                  | 6m14.105s  |
+| MPI Python   | 16                 | 3m1.035s   |
+| MPI Python   | 28                 | 4m2.122s   |
