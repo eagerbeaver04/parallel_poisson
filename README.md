@@ -93,32 +93,20 @@ return L
 Для каждой итерации $k = 0, 1, 2, ...$:
 
 1. **Вычисление α(k):**
-   $$
-   \alpha^{(k)} = \frac{\mathbf{z}^{(k)} \cdot \mathbf{r}^{(k)}}{\mathbf{p}^{(k)} \cdot \mathbf{q}^{(k)}}
-   $$
+   $$\alpha^{(k)} = \frac{\mathbf{z}^{(k)} \cdot \mathbf{r}^{(k)}}{\mathbf{p}^{(k)} \cdot \mathbf{q}^{(k)}}$$
 
    где $$\mathbf{q}^{(k)} = A\mathbf{p}^{(k)}$$
 
 2. **Обновление решения и невязки:**
-   $$
-   \mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} + \alpha^{(k)}\mathbf{p}^{(k)}
-   $$
-   $$
-   \mathbf{r}^{(k+1)} = \mathbf{r}^{(k)} - \alpha^{(k)}\mathbf{q}^{(k)}
-   $$
+   $$\mathbf{x}^{(k+1)} = \mathbf{x}^{(k)} + \alpha^{(k)}\mathbf{p}^{(k)}$$
+   $$\mathbf{r}^{(k+1)} = \mathbf{r}^{(k)} - \alpha^{(k)}\mathbf{q}^{(k)}$$
 
 3. **Решение системы с предобуславливателем:**
-   $$
-   P\mathbf{z}^{(k+1)} = \mathbf{r}^{(k+1)}
-   $$
+   $$P\mathbf{z}^{(k+1)} = \mathbf{r}^{(k+1)}$$
 
 4. **Вычисление β(k) и нового направления:**
-   $$
-   \beta^{(k)} = \frac{\mathbf{z}^{(k+1)} \cdot \mathbf{r}^{(k+1)}}{\mathbf{z}^{(k)} \cdot \mathbf{r}^{(k)}}
-   $$
-   $$
-   \mathbf{p}^{(k+1)} = \mathbf{z}^{(k+1)} + \beta^{(k)}\mathbf{p}^{(k)}
-   $$
+   $$\beta^{(k)} = \frac{\mathbf{z}^{(k+1)} \cdot \mathbf{r}^{(k+1)}}{\mathbf{z}^{(k)} \cdot \mathbf{r}^{(k)}}$$
+   $$\mathbf{p}^{(k+1)} = \mathbf{z}^{(k+1)} + \beta^{(k)}\mathbf{p}^{(k)}$$
 
 
  - **Критерий остановки:** $$||r(k)|| / ||r(0)|| < ε$$
