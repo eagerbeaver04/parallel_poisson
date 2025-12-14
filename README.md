@@ -155,11 +155,19 @@ return L
 | OpenMP       | 8                  | 0m6.849s   |
 | OpenMP       | 16                 | 0m6.693s   |
 | OpenMP       | 48                 | 0m3.436s   |
-| MPI C        | 2                  | 0m19.548s  |
-| MPI C        | 4                  | 0m12.090s  |
-| MPI C        | 16                 | 0m7.596s   |
-| MPI C        | 28                 | 0m8.207s   |
-| MPI Python   | 2                  | 12m45.516s |
-| MPI Python   | 4                  | 6m14.105s  |
-| MPI Python   | 16                 | 3m1.035s   |
-| MPI Python   | 28                 | 4m2.122s   |
+| MPI C        | 2                  | 0m24.486s  |
+| MPI C        | 4                  | 0m11.910s  |
+| MPI C        | 8                  | 0m8.456s   |
+| MPI C        | 16                 | 0m7.082s   |
+| MPI C        | 28                 | 0m8.074s   |
+| MPI C        | 56                 | 0m15.013s  |
+| MPI C        | 84                 | 0m23.510s  |
+| MPI C        | 112                | 0m30.497s  |
+| MPI Python   | 2                  | 71m46.280s |
+| MPI Python   | 4                  | 31m22.279s |
+| MPI Python   | 8                  | 18m22.879s |
+| MPI Python   | 16                 | 9m16.237s  |
+| MPI Python   | 28                 | 4m48.685s  |
+| MPI Python   | 56                 | 4m47.345s  |
+| MPI Python   | 84                 | 3m44.220s  |
+| MPI Python   | 112                | 8m24.708s  |
