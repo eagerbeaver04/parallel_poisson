@@ -164,11 +164,12 @@ return L
 | MPI Python   | 28                 | 4m48.685s  |
 | MPI Python   | 56                 | 4m47.345s  |
 | MPI Python   | 84                 | 3m44.220s  |
-| MPI Python   | 112                | 8m24.708s  |
+| MPI Python   | 112                | 4m44.508s  |
 
 <img width="1189" height="590" alt="image" src="https://github.com/user-attachments/assets/c0640790-b9ec-428d-9495-541ae330903d" />
 
-<img width="1280" height="451" alt="image" src="https://github.com/user-attachments/assets/6f00b7b2-45f3-440a-ab71-0b5a508674a9" />
+<img width="1280" height="451" alt="image" src="https://github.com/user-attachments/assets/82b75bc2-cf82-4d43-ace7-79c0ebac2c98" />
+
 
 
 ## Выводы
